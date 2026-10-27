@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kino Olami</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  :root{--bg:#0f1117;--card:#1b1e29;--text:#f2f3f7;--muted:#9aa0b4;--accent:#e50914}
+  *{box-sizing:border-box;margin:0}
+  body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+  header{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;background:var(--card)}
+  header h1{font-size:20px;color:var(--accent)}
+  #user{display:none;align-items:center;gap:10px;font-size:14px}
+  #user img{width:34px;height:34px;border-radius:50%}
+  button{background:var(--accent);color:#fff;border:0;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:14px}
+  #login{display:flex;flex-direction:column;align-items:center;gap:18px;padding:80px 20px;text-align:center}
+  #login p{color:var(--muted)}
+  #app{display:none;padding:18px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px}
+  .movie{background:var(--card);border-radius:10px;overflow:hidden;cursor:pointer}
+  .movie img{width:100%;aspect-ratio:16/10;object-fit:cover;display:block}
+  .movie div{padding:10px;font-size:14px}
+  #player{display:none;margin-bottom:20px}
+  #player iframe{width:100%;aspect-ratio:16/9;border:0;border-radius:10px}
+  #player h2{margin:10px 0 4px;font-size:18px}
+  #player p{color:var(--muted);font-size:14px}
+</style>
+</head>
+<body>
+<header>
+  <h1>🎬 Kino Olami</h1>
+  <div id="user">
+    <img id="avatar" alt="">
+    <span id="uname"></span>
+    <button onclick="signOut()">Chiqish</button>
+  </div>
+</header>
+
+<section id="login">
+  <h2>Kino ko‘rish uchun kiring</h2>
+  <p>Google akauntingiz orqali tezda kiring</p>
+  <div id="gbtn"></div>
+</section>
+
+<main id="app">
+  <div id="player">
+    <iframe id="frame" allowfullscreen allow="autoplay; fullscreen"></iframe>
+    <h2 id="ptitle"></h2>
+    <p id="pdesc"></p>
+  </div>
+  <div class="grid" id="grid"></div>
+</main>
+
+<script>
+  // 1) Google Cloud Console'dan olgan Client ID'ni shu yerga qo‘ying:
+  const CLIENT_ID = "SIZNING_CLIENT_ID.apps.googleusercontent.com";
+
+  // 2) Kinolar ro‘yxati. Faqat o‘zingizga tegishli yoki bepul/litsenziyalangan
+  //    videolarni qo‘shing (yt = YouTube video ID).
+  const MOVIES = [
+    {title:"Big Buck Bunny", desc:"Qisqa multfilm (Blender Foundation).", yt:"aqz-KE-bpKQ"},
+    {title:"Sintel", desc:"Fentezi qisqa metrajli film (Blender Foundation).", yt:"eRsGyueVLvQ"},
+    {title:"Tears of Steel", desc:"Fantastik qisqa film (Blender Foundation).", yt:"R6MlUcmOul8"}
+  ];
+
+  function parseJwt(t){
+    const b = t.split(".")[1].replace(/-/g,"+").replace(/_/g,"/");
+    return JSON.parse(decodeURIComponent(escape(atob(b))));
+  }
+
+  function showUser(u){
+    document.getElementById("avatar").src = u.picture || "";
+    document.getElementById("uname").textContent = u.name;
+    document.getElementById("user").style.display = "flex";
+    document.getElementById("login").style.display = "none";
+    document.getElementById("app").style.display = "block";
+  }
+
+  function handleCredential(resp){
+    // Haqiqiy loyihada bu tokenni backendga yuborib tekshiring (POST /auth/google).
+    const u = parseJwt(resp.credential);
+    try{ sessionStorage.setItem("user", JSON.stringify(u)); }catch(e){}
+    showUser(u);
+  }
+
+  function signOut(){
+    if(window.google) google.accounts.id.disableAutoSelect();
+    try{ sessionStorage.removeItem("user"); }catch(e){}
+    document.getElementById("user").style.display = "none";
+    document.getElementById("app").style.display = "none";
+    document.getElementById("player").style.display = "none";
+    document.getElementById("frame").src = "";
+    document.getElementById("login").style.display = "flex";
+  }
+
+  function play(m){
+    document.getElementById("frame").src = "https://www.youtube.com/embed/" + m.yt + "?autoplay=1";
+    document.getElementById("ptitle").textContent = m.title;
+    document.getElementById("pdesc").textContent = m.desc;
+    document.getElementById("player").style.display = "block";
+    window.scrollTo({top:0, behavior:"smooth"});
+  }
+
+  const grid = document.getElementById("grid");
+  MOVIES.forEach(m => {
+    const el = document.createElement("div");
+    el.className = "movie";
+    el.innerHTML = '<img src="https://img.youtube.com/vi/' + m.yt + '/hqdefault.jpg" alt=""><div></div>';
+    el.querySelector("div").textContent = m.title;
+    el.onclick = () => play(m);
+    grid.appendChild(el);
+  });
+
+  window.onload = () => {
+    google.accounts.id.initialize({client_id: CLIENT_ID, callback: handleCredential});
+    google.accounts.id.renderButton(document.getElementById("gbtn"), {theme:"filled_blue", size:"large", text:"signin_with"});
+    try{
+      const saved = sessionStorage.getItem("user");
+      if(saved) showUser(JSON.parse(saved));
+    }catch(e){}
+  };
+</script>
+</body>
+</html>
